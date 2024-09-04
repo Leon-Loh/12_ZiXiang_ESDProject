@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Facility Description Chart</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.14.7/dist/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script> <!-- Updated version -->
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.4.0/dist/jspdf.umd.min.js"></script>
+
+    <style>
+        #chart-container {
+            width: 80%;
+            margin: auto;
+            padding: 20px;
+            background-color: rgba(128, 128, 128, 0.2);
+        }
+        .btn-export, .btn-back {
+            margin: 20px;
+        }
+        .btn-back {
+            margin-left: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-3">
+        <button class="btn btn-secondary btn-back" onclick="goBack()">
+            <i class="fas fa-arrow-left"></i> Back
+        </button>
+        <h2>Facility Description Pie Chart</h2>
+        <button class="btn btn-primary btn-export" onclick="exportChart()">Export as PDF</button>
+        <div id="chart-container">
+            <canvas id="facilityChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', (event) => {
+            const bearerToken = sessionStorage.getItem("Token"); // Get token from sessionStorage
+            if (!bearerToken) {
+                alert('No authentication token found.');
+                return;
+            }
+
+            fetch('https://localhost:44366/api/Booking/GetAll', {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + bearerToken
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('API data:', data); // Log the data to the console
+
+                // Process data for the chart
+                const descriptions = data.map(booking => booking.facilityDescription);
+                const descriptionCounts = descriptions.reduce((acc, description) => {
+                    acc[description] = (acc[description] || 0) + 1;
+                    return acc;
+                }, {});
+
+                const labels = Object.keys(descriptionCounts);
+                const values = Object.values(descriptionCounts);
+
+                const ctx = document.getElementById('facilityChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: labels, // Array of facility descriptions
+                        datasets: [{
+                            label: 'Facility Description Count',
+                            data: values, // Array of counts
+                            backgroundColor: [
+                                'rgba(255, 99, 132, 1)',
+                                'rgba(54, 162, 235, 1)',
+                                'rgba(255, 206, 86, 1)',
+                                'rgba(75, 192, 192, 1)',
+                                'rgba(153, 102, 255, 1)',
+                                'rgba(255, 159, 64, 1)'
+                            ],
+                            borderColor: [
+                                'rgba(255, 99, 132, 1)',
+                                'rgba(54, 162, 235, 1)',
+                                'rgba(255, 206, 86, 1)',
+                                'rgba(75, 192, 192, 1)',
+                                'rgba(153, 102, 255, 1)',
+                                'rgba(255, 159, 64, 1)'
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(tooltipItem) {
+                                        return tooltipItem.label + ': ' + tooltipItem.raw;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            })
+            .catch(error => console.error('Error fetching chart data:', error));
+        });
+
+        function exportChart() {
+            const { jsPDF } = window.jspdf;
+
+            html2canvas(document.getElementById('chart-container')).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                pdf.addImage(imgData, 'PNG', 10, 10, 190, 100);
+                pdf.save('chart.pdf');
+            }).catch(error => console.error('Error capturing chart:', error));
+        }
+        function goBack() {
+            window.location.href = 'home.html'; // Change 'home.html' to the correct path of your home page
+        }
+    </script>
+</body>
+</html>
